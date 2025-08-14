@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Absurd Skip Buttons – Levels</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#0f1620; --ink:#e8f1ff; --muted:#9db0c9; --accent:#4ade80; --accent2:#60a5fa; --warn:#f59e0b; --danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, #1a2332, transparent),
+                  radial-gradient(900px 400px at 120% 10%, #132030, transparent),
+                  var(--bg);
+      color:var(--ink);
+    }
+    .wrap{max-width:1100px;margin:0 auto;padding:24px}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .badge{background:linear-gradient(90deg,var(--accent2),var(--accent)); color:#081018; font-weight:700; padding:6px 12px; border-radius:999px; text-transform:uppercase; letter-spacing:.06em; box-shadow:0 6px 24px rgba(0,0,0,.35)}
+    .panel{background:rgba(15,22,32,.8); border:1px solid rgba(255,255,255,.06); border-radius:18px; box-shadow:0 12px 40px rgba(0,0,0,.35)}
+    .grid{display:grid; grid-template-columns:1.1fr .9fr; gap:16px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+
+    /* Fake ad zones */
+    .ad{position:relative; overflow:hidden; padding:18px; min-height:160px}
+    .ad h4{margin:0 0 8px 0}
+    .ad .skip{position:absolute; right:12px; top:12px}
+    .ad .ticker{position:absolute; left:12px; bottom:12px; font-size:12px; color:var(--muted)}
+    .faux{background:linear-gradient(135deg,#111827,#0b1220)}
+
+    button, .btn{--b:rgba(255,255,255,.12); background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02)); border:1px solid var(--b); color:var(--ink); padding:10px 14px; border-radius:12px; cursor:pointer; transition:.15s transform, .2s background; font-weight:600}
+    button:hover{transform:translateY(-1px)}
+    button:disabled{opacity:.6; cursor:not-allowed}
+
+    .primary{background:linear-gradient(180deg,var(--accent),#3ddc7d); border-color:#2fb368; color:#06230f}
+    .danger{background:linear-gradient(180deg,#ef4444,#dc2626); border-color:#b91c1c; color:#fff}
+    .ghost{background:transparent}
+
+    .levelbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .chip{font-size:12px; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08)}
+    .chip.active{background:linear-gradient(90deg,rgba(96,165,250,.35),rgba(74,222,128,.35)); border-color:rgba(74,222,128,.6)}
+
+    .game{padding:18px}
+    .task{font-size:18px; color:var(--muted)}
+    .status{font-size:14px; color:var(--muted)}
+    .big{font-size:28px; font-weight:800}
+    .center{display:flex; align-items:center; justify-content:center}
+
+    /* Floating annoying stickers */
+    .sticker{position:absolute; inset:auto; z-index:0; pointer-events:none; opacity:.3; filter:blur(.2px)}
+    .sticker.one{top:6%; left:4%; font-size:40px}
+    .sticker.two{bottom:10%; right:6%; font-size:36px}
+
+    /* Tooltip */
+    .tip{position:relative}
+    .tip:hover::after{
+      content:attr(data-tip); position:absolute; left:50%; transform:translateX(-50%);
+      bottom:calc(100% + 6px); white-space:nowrap; background:#0b1220; color:#cfe1ff;
+      padding:6px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.08); font-size:12px;
+    }
+
+    /* Drag area */
+    .drag-area{border:1px dashed rgba(255,255,255,.18); padding:14px; border-radius:12px; display:flex; gap:12px; align-items:center; justify-content:space-between}
+    .draggable{display:inline-block; padding:8px 12px; border-radius:10px; background:rgba(96,165,250,.15); border:1px solid rgba(96,165,250,.35); cursor:grab}
+    .pig{display:inline-block; padding:8px 12px; border-radius:10px; background:rgba(74,222,128,.12); border:1px dashed rgba(74,222,128,.45)}
+
+    /* Slider */
+    input[type="range"]{width:100%}
+
+    /* Footer */
+    footer{opacity:.6; font-size:12px; padding:20px; text-align:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <span class="badge">99.9% Advertentie Ervaring™</span>
+        <div>
+          <div class="big">Skip? Haha… Nee.</div>
+          <div class="status">Ontsnap aan alle niet-werkende skip-knoppen. Level up om eindelijk… helemaal niets te krijgen.</div>
+        </div>
+      </div>
+      <div class="levelbar" id="levelbar"></div>
+    </header>
+
+    <div class="grid">
+      <section class="panel game" id="game">
+        <div class="task" id="task">Druk op Start om te beginnen.</div>
+        <div id="ui" style="margin-top:14px; display:flex; flex-direction:column; gap:12px"></div>
+        <div style="margin-top:12px; display:flex; gap:8px">
+          <button class="primary" id="start">Start</button>
+          <button class="ghost" id="reset">Reset</button>
+        </div>
+      </section>
+
+      <aside style="display:flex; flex-direction:column; gap:16px">
+        <div class="panel ad faux">
+          <h4>🔥 Mega Premium Ultra Plus Trial</h4>
+          <button class="btn skip tip" data-tip="werkt niet" aria-label="Skip advertentie">Skip ▶</button>
+          <p>Nu met 120% meer pop-ups per pop-up. Klik nergens op. Vooral niet hier.</p>
+          <div class="ticker">Advertentie #A42 – "We houden van je data"</div>
+        </div>
+
+        <div class="panel ad faux">
+          <h4>💎 Gratis diamant*</h4>
+          <button class="btn skip tip" data-tip="echt niet" aria-label="Skip">Skip ▶</button>
+          <p>*Voorwaarden: stuur 999 ansichtkaarten naar jezelf.</p>
+          <div class="ticker">Advertentie #B17 – Volg de glinstering</div>
+        </div>
+
+        <div class="panel ad faux">
+          <h4>🧠 IQ Booster 3000</h4>
+          <button class="btn skip tip" data-tip="nope" aria-label="Skip">Skip ▶</button>
+          <p>Resultaten variëren van 'meh' tot 'wie ben ik?'.</p>
+          <div class="ticker">Advertentie #C09 – Nu met extra captcha's</div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>Gemaakt voor chaos. Geen echte advertenties, alleen irritatie-simulatie. © 2025</footer>
+  </div>
+
+  <!-- Stickers -->
+  <div class="sticker one">💸💸💸</div>
+  <div class="sticker two">⏳ Skip over 47:12</div>
+
+<script>
+(function(){
+  const task = document.getElementById('task');
+  const ui = document.getElementById('ui');
+  const startBtn = document.getElementById('start');
+  const resetBtn = document.getElementById('reset');
+  const levelbar = document.getElementById('levelbar');
+
+  // Prevent all sidebar skip buttons
+  document.querySelectorAll('.ad .skip').forEach(b=>{
+    b.addEventListener('click', e=>{
+      e.preventDefault();
+      b.textContent = ['Nog 1 uur…','Bijna… niet','404: Skip niet gevonden','Betaal om te skippen?','Klik hier (niet)'][Math.floor(Math.random()*5)];
+      b.blur();
+    })
+  })
+
+  let level = 0;
+  let state = {};
+
+  // Utility for random helpers
+  const R = {
+    pick: a => a[Math.floor(Math.random()*a.length)],
+    int: (min,max)=> Math.floor(Math.random()*(max-min+1))+min
+  };
+
+  const levels = [
+    // 1
+    {
+      title:'Level 1 – Wacht maar even',
+      desc:'Wacht 5 seconden. Dan verschijnt er een skip-knop. Die… nog steeds niets doet.',
+      run(){
+        ui.innerHTML = '';
+        const info = el('div', {class:'status'}, 'Timer: 5');
+        const skip = el('button', {class:'btn', disabled:true}, 'Skip ▶');
+        let t=5; const iv = setInterval(()=>{
+          t--; info.textContent = 'Timer: '+t;
+          if(t<=0){ clearInterval(iv); skip.disabled=false; skip.classList.add('tip'); skip.dataset.tip='werkt nog steeds niet'; }
+        },1000);
+        skip.addEventListener('click', ()=>{
+          complete('Gefopt. Klik nu op de héél kleine link hieronder.');
+          const tiny = el('a', {href:'#', style:'font-size:10px; display:inline-block; margin-top:6px'}, 'volgende »');
+          tiny.addEventListener('click', (e)=>{e.preventDefault(); next();});
+          ui.appendChild(tiny);
+        });
+        ui.append(info, skip);
+      }
+    },
+    // 2
+    {
+      title:'Level 2 – Klik 10 keer',
+      desc:'Klik de nep-skip 10 keer. Elke klik verandert de tekst.',
+      run(){
+        ui.innerHTML='';
+        let n=0; const skip = el('button',{class:'btn danger'},'Skip (0/10)');
+        skip.addEventListener('click',()=>{
+          n++; skip.textContent = 'Skip ('+n+'/10)';
+          if(n>=10){ complete('Oké dan. Je doorzettingsvermogen is verdacht.');
+            const go = el('button',{class:'primary'},'Volgende level');
+            go.addEventListener('click',next); ui.appendChild(go);
+          }
+        });
+        ui.append(skip);
+      }
+    },
+    // 3
+    {
+      title:'Level 3 – Houd vast',
+      desc:'Houd de knop 3 seconden ingedrukt zonder los te laten.',
+      run(){
+        ui.innerHTML='';
+        let downAt=null, held=0, timer;
+        const msg = el('div',{class:'status'},'0.00s');
+        const btn = el('button',{class:'btn'},'Ingedrukt houden');
+        const update=()=>{ msg.textContent = (held/1000).toFixed(2)+'s'; };
+        btn.addEventListener('mousedown',()=>{ downAt=Date.now(); timer=setInterval(()=>{ held=Date.now()-downAt; update(); if(held>=3000){ clearInterval(timer); btn.disabled=true; complete('Je hebt 3s gehaald. Pijnlijk effectief.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} },20); });
+        ;['mouseup','mouseleave','touchend','touchcancel'].forEach(ev=> btn.addEventListener(ev,()=>{ clearInterval(timer); held=0; update(); }));
+        ui.append(msg,btn);
+      }
+    },
+    // 4
+    {
+      title:'Level 4 – Type de zin',
+      desc:'Typ exact: “Ik accepteer alle 999 cookies”.',
+      run(){
+        ui.innerHTML='';
+        const input = el('input',{type:'text',placeholder:'typ hier',style:'padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--ink)'});
+        const ok = el('button',{class:'btn'},'Valideer');
+        ok.addEventListener('click',()=>{
+          if(input.value.trim() === 'Ik accepteer alle 999 cookies'){
+            complete('Zucht… oké, dat telt.');
+            const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);
+          } else { shake(input); input.focus(); }
+        });
+        ui.append(input, ok);
+      }
+    },
+    // 5
+    {
+      title:'Level 5 – Schuif exact 73%',
+      desc:'Zet de slider precies op 73%.',
+      run(){
+        ui.innerHTML='';
+        const r = el('input',{type:'range',min:0,max:100,value:0});
+        const s = el('div',{class:'status'},'0%');
+        const btn = el('button',{class:'btn'},'Controleer');
+        r.addEventListener('input',()=> s.textContent = r.value+'%');
+        btn.addEventListener('click',()=>{
+          if(Number(r.value)===73){ complete('Pixel-perfect. Verdacht goed.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt); }
+          else shake(r);
+        });
+        ui.append(r,s,btn);
+      }
+    },
+    // 6
+    {
+      title:'Level 6 – Sleep de munt in de spaarpot',
+      desc:'Drag & drop-time!',
+      run(){
+        ui.innerHTML='';
+        const area = el('div',{class:'drag-area'},'');
+        const coin = el('div',{class:'draggable',draggable:true},'🪙 Munt');
+        const pig = el('div',{class:'pig'},'🐷 Spaarpot');
+        coin.addEventListener('dragstart',e=>{ e.dataTransfer.setData('text/plain','coin'); });
+        pig.addEventListener('dragover',e=>e.preventDefault());
+        pig.addEventListener('drop',e=>{ e.preventDefault(); const data=e.dataTransfer.getData('text/plain'); if(data==='coin'){ pig.textContent='🐷 *Kling!*'; complete('Rijkdom ontgrendeld (0,00€).'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} });
+        area.append(coin,pig); ui.append(area);
+      }
+    },
+    // 7
+    {
+      title:'Level 7 – Vang de vluchtende Skip',
+      desc:'Klik op de Skip-knop die weg rent. Je hebt 10 seconden.',
+      run(){
+        ui.innerHTML='';
+        const box = el('div',{style:'position:relative;height:220px;border:1px dashed rgba(255,255,255,.18);border-radius:12px;overflow:hidden'});
+        const b = el('button',{class:'btn',style:'position:absolute;left:40%;top:40%'},'Skip mij dan');
+        // const time = el('div',{class:'status'},'Tijd: 10');
+        // let t=10; const iv=setInterval(()=>{ t--; time.textContent='Tijd: '+t; if(t<=0){ clearInterval(iv); endFail(); } },1000);
+        const move=()=>{
+          const x = Math.random()* (box.clientWidth-120);
+          const y = Math.random()* (box.clientHeight-40);
+          b.style.left = x+'px'; b.style.top = y+'px';
+        };
+        box.addEventListener('mousemove',e=>{
+          const rect = b.getBoundingClientRect();
+          const d = Math.hypot(e.clientX-rect.left, e.clientY-rect.top);
+          if(d<120) move();
+        });
+        b.addEventListener('click',()=>{ clearInterval(iv); complete('Je hebt de skip gevangen. Ironisch.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt); });
+        box.appendChild(b); ui.append(time, box);
+      }
+    },
+    // 8
+    {
+      title:'Level 8 – Krimpknop',
+      desc:'De knop wordt kleiner elke keer dat je erover hovert. Klik ’m voordat hij micro is.',
+      run(){
+        ui.innerHTML='';
+        const b = el('button',{class:'btn'},'Klik me snel');
+        let size=1;
+        b.addEventListener('mouseenter',()=>{ size=Math.max(0.4,size-0.1); b.style.transform='scale('+size+')'; });
+        b.addEventListener('click',()=>{ complete('Nog net gelukt.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);});
+        ui.append(b);
+      }
+    },
+    // 9
+    {
+      title:'Level 9 – Kies alle katten',
+      desc:'Fake captcha: klik alleen de 🐱 iconen (minstens 3).',
+      run(){
+        ui.innerHTML='';
+        const grid = el('div',{style:'display:grid;grid-template-columns:repeat(6,1fr);gap:6px'});
+        const icons = ['🐱','🐶','🦊','🐭','🐼','🦁','🐸','🐷','🐨','🐵','🐱','🐙','🐧','🐰','🐱','🐢','🐯','🦄'];
+        let sel=0;
+        icons.forEach(ic=>{
+          const cell = el('button',{class:'btn',style:'padding:8px 0'},ic);
+          cell.addEventListener('click',()=>{
+            if(ic==='🐱'){ sel++; cell.disabled=true; cell.style.opacity=.6; if(sel>=3){ complete('Captcha overwonnen. Of toch niet?'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} }
+            else { shake(cell); }
+          });
+          grid.appendChild(cell);
+        });
+        ui.append(grid);
+      }
+    },
+    // 10
+    {
+      title:'Level 10 – Onthoud de code',
+      desc:'Bekijk 4 cijfers en typ ze daarna exact na.',
+      run(){
+        ui.innerHTML='';
+        const symbols = ['1','2','3','4','5','6','7','8','9','0'];
+        const seq = Array.from({length:4},()=> R.pick(symbols));
+        const show = el('div',{class:'big'},seq.join(' '));
+        const input = el('input',{type:'text',placeholder:'voer de 4 symbolen in met spaties',style:'padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--ink);width:100%;margin-top:8px'});
+        const go = el('button',{class:'btn'},'Check');
+        let hideT=setTimeout(()=>{ show.textContent='✱ ✱ ✱ ✱'; },2500);
+        go.addEventListener('click',()=>{
+          if(input.value.trim()===seq.join(' ')){
+            complete('Brains. Nice.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);
+          } else { shake(input); }
+        });
+        ui.append(show,input,go);
+      }
+    },
+    // 11
+    {
+      title:'Level 11 – Scroll dieper',
+      desc:'Scroll het vak helemaal naar beneden om “Volgende” te ontgrendelen.',
+      run(){
+        ui.innerHTML='';
+        const box = el('div',{style:'height:160px;overflow:auto;border:1px dashed rgba(255,255,255,.2);border-radius:10px;padding:10px'});
+        box.innerHTML = '<p>'+('Heel veel tekst. '.repeat(80))+'</p>';
+        const gate = el('button',{class:'btn',disabled:true},'Volgende (vergrendeld)');
+        box.addEventListener('scroll',()=>{
+          if(Math.ceil(box.scrollTop+box.clientHeight)>=box.scrollHeight){ gate.disabled=false; gate.textContent='Verder »'; }
+        });
+        gate.addEventListener('click',()=>{ complete('Je hebt het einde gehaald.'); next();});
+        ui.append(box,gate);
+      }
+    },
+    // 12
+    {
+      title:'Level 12 – Focus houden',
+      desc:'Houd de cursor 3 seconden boven de knop zonder te bewegen.',
+      run(){
+        ui.innerHTML='';
+        const b = el('button',{class:'btn'},'Blijf boven mij');
+        let t=0, iv=null;
+        b.addEventListener('mouseenter',()=>{ iv=setInterval(()=>{ t+=100; if(t>=3000){ clearInterval(iv); complete('Zenmeester.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt); } },100); });
+        b.addEventListener('mouseleave',()=>{ clearInterval(iv); t=0; });
+        ui.append(b);
+      }
+    },
+    // 13
+    {
+      title:'Level 13 – Niet klikken',
+      desc:'Klik 5 seconden lang op helemaal niets. Raak géén knop.',
+      run(){
+        ui.innerHTML='';
+        const info = el('div',{class:'status'},'5');
+        const trap = el('button',{class:'btn danger'},'Klik mij NIET');
+        let t=5, iv=setInterval(()=>{ t--; info.textContent=''+t; if(t<=0){ clearInterval(iv); complete('Je deed… niets. Perfect.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} },1000);
+        trap.addEventListener('click',()=>{ t=5; info.textContent='Reset naar 5 (je kon het niet laten)'; });
+        ui.append(info,trap);
+      }
+    },
+    // 14
+    {
+      title:'Level 14 – Vind de echte skip',
+      desc:'20 knoppen, één is echt.',
+      run(){
+        ui.innerHTML='';
+        const grid = el('div',{style:'display:grid;grid-template-columns:repeat(5,1fr);gap:8px'});
+        const real = R.int(0,19);
+        for(let i=0;i<20;i++){
+          const b = el('button',{class:'btn'}, i===real? 'ECHTE SKIP':'Skip');
+          b.addEventListener('click',()=>{ if(i===real){ complete('Je vond hem. Verdacht…'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} else { b.disabled=true; shake(b);} });
+          grid.appendChild(b);
+        }
+        ui.append(grid);
+      }
+    },
+    // 15
+    {
+      title:'Level 15 – Klik bij 0.00',
+      desc:'Druk op stop precies bij 0.00s (±0.05s).',
+      run(){
+        ui.innerHTML='';
+        let t=2.00, iv=null; const label = el('div',{class:'big'},t.toFixed(2)+'s');
+        const start = el('button',{class:'btn'},'Start');
+        const stop = el('button',{class:'btn',disabled:true},'Stop!');
+        start.addEventListener('click',()=>{ if(iv) return; start.disabled=true; stop.disabled=false; iv=setInterval(()=>{ t=Math.max(0, t-0.01); label.textContent=t.toFixed(2)+'s'; if(t<=0){ clearInterval(iv); }
+        },20); });
+        stop.addEventListener('click',()=>{ if(!iv) return; clearInterval(iv); const diff=Math.abs(t-0); if(diff<=0.05){ complete('Perfecte timing.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} else { label.textContent='Mislukt ('+t.toFixed(2)+'s)'; start.disabled=false; stop.disabled=true; t=2.00; } });
+        ui.append(label,start,stop);
+      }
+    },
+    // 16
+    {
+      title:'Level 16 – S K I P',
+      desc:'Klik de letters in de juiste volgorde: S → K → I → P',
+      run(){
+        ui.innerHTML='';
+        const letters = ['S','K','I','P'];
+        let idx=0; const row = el('div',{style:'display:flex;gap:8px;flex-wrap:wrap'});
+        for(let i=0;i<8;i++){
+          const ch = R.pick(['S','K','I','P','X','Z']);
+          const b = el('button',{class:'btn'}, ch);
+          b.addEventListener('click',()=>{ if(ch===letters[idx]){ idx++; b.disabled=true; if(idx===4){ complete('S K I P compleet.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} } else { idx=0; Array.from(row.children).forEach(c=>c.disabled=false); shake(b);} });
+          row.appendChild(b);
+        }
+        ui.append(row);
+      }
+    },
+    // 17
+    {
+      title:'Level 17 – Verplaats de slider naar exact X',
+      desc:'We kiezen een nieuw getal elke keer. Succes!',
+      run(){
+        ui.innerHTML='';
+        const target = R.int(10,90);
+        const r = el('input',{type:'range',min:0,max:100,value:0});
+        const s = el('div',{class:'status'},'Doel: '+target+'%');
+        const btn = el('button',{class:'btn'},'Controleer');
+        btn.addEventListener('click',()=>{ if(Number(r.value)===target){ complete('Je raakt altijd doel.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} else { shake(r);} });
+        ui.append(s,r,btn);
+      }
+    },
+    // 18
+    {
+      title:'Level 18 – Schaduwskip',
+      desc:'De knop verschijnt alleen wanneer je muis stilstaat.',
+      run(){
+        ui.innerHTML='';
+        const area = el('div',{style:'position:relative;height:160px;border:1px dashed rgba(255,255,255,.18);border-radius:12px'});
+        const b = el('button',{class:'btn',style:'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:none'},'Skip');
+        let stillTimer=null, lastMove=Date.now();
+        area.addEventListener('mousemove',()=>{ lastMove=Date.now(); b.style.display='none'; if(stillTimer) clearTimeout(stillTimer); stillTimer=setTimeout(()=>{ if(Date.now()-lastMove>600){ b.style.display='inline-block'; } },650); });
+        b.addEventListener('click',()=>{ complete('Sluipend geklikt.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt); });
+        area.appendChild(b); ui.append(area);
+      }
+    },
+    // 19
+    {
+      title:'Level 19 – 3 vinkjes',
+      desc:'Vink alle absurde voorwaarden aan, uiteraard.',
+      run(){
+        ui.innerHTML='';
+        const list=[
+          'Ik lees nooit voorwaarden',
+          'Ik accepteer alle toekomstige advertenties',
+          'Ik wil geen skip-knop (lol)'
+        ];
+        const checks=list.map(t=>{ const label=el('label',{}); const c=el('input',{type:'checkbox',style:'margin-right:8px'}); label.append(c, document.createTextNode(t)); return {label,c}; });
+        const btn=el('button',{class:'btn',disabled:true},'Verder »');
+        checks.forEach(({c})=> c.addEventListener('change',()=>{ btn.disabled = !checks.every(x=>x.c.checked); }));
+        btn.addEventListener('click',()=>{ complete('Je hebt het internet officieel geaccepteerd.'); next(); });
+        checks.forEach(x=> ui.append(x.label)); ui.append(btn);
+      }
+    },
+    // 20 – Boss
+    {
+      title:'Level 20 – Boss Skip',
+      desc:'Pak 3 tokens: klik, typ, sleep. Dan ontgrendel je de laatste *niet werkende* skip.',
+      run(){
+        ui.innerHTML='';
+        let tokens=0; const status=el('div',{class:'status'},'Tokens: 0/3');
+        const a = el('button',{class:'btn'},'Token 1: Klik');
+        const b = el('input',{type:'text',placeholder:'typ "SKIPBOSS"'});
+        const cWrap = el('div',{class:'drag-area'},'Sleep ⚙️ naar 🔒');
+        const gear = el('div',{class:'draggable',draggable:true},'⚙️');
+        const lock = el('div',{class:'pig'},'🔒');
+        cWrap.innerHTML=''; cWrap.append(gear,lock);
+        a.addEventListener('click',()=>{ a.disabled=true; got(); });
+        lock.addEventListener('dragover',e=>e.preventDefault());
+        gear.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain','g'));
+        lock.addEventListener('drop',e=>{ e.preventDefault(); if(e.dataTransfer.getData('text/plain')==='g'){ lock.textContent='🔓'; got(); }});
+        b.addEventListener('input',()=>{ if(b.value.trim().toUpperCase()==='SKIPBOSS'){ b.disabled=true; got(); }});
+        function got(){ tokens++; status.textContent='Tokens: '+tokens+'/3'; if(tokens>=3){
+          const gate = el('button',{class:'btn danger'},'EINDELIJK SKIP ▶');
+          gate.addEventListener('click',()=>{ gate.textContent='Haha, nog steeds niet. Maar je hebt WEL gewonnen 🎉'; complete('GG! Klik Reset om opnieuw te lijden.'); });
+          ui.appendChild(gate);
+        }}
+        ui.append(status,a,b,cWrap);
+      }
+    }
+  ];
+
+  function renderLevel(){
+    const l = levels[level];
+    if(!l){ return; }
+    task.innerHTML = `<strong>${l.title}</strong><br>${l.desc}`;
+    ui.innerHTML = '';
+    renderLevelbar();
+    l.run();
+  }
+
+  function renderLevelbar(){
+    levelbar.innerHTML='';
+    levels.forEach((l,i)=>{
+      const c = el('div',{class:'chip'+(i===level?' active':'')}, `Level ${i+1}`);
+      levelbar.appendChild(c);
+    })
+  }
+
+  function next(){ level = Math.min(level+1, levels.length-1); renderLevel(); }
+  function endFail(){ ui.appendChild(el('div',{class:'status'},'Mislukt! Probeer opnieuw.')); }
+  function complete(msg){ ui.appendChild(el('div',{class:'status'}, '✅ '+msg)); }
+
+  function shake(node){
+    node.style.transition='transform .1s';
+    node.style.transform='translateX(4px)';
+    setTimeout(()=>{ node.style.transform='translateX(-4px)'; },60);
+    setTimeout(()=>{ node.style.transform='translateX(0)'; },120);
+  }
+
+  // helpers
+  function el(tag, attrs={}, text){
+    const n = document.createElement(tag);
+    Object.entries(attrs).forEach(([k,v])=>{
+      if(k==='class') n.className=v; else if(k==='style') n.setAttribute('style',v); else if(k in n) n[k]=v; else n.setAttribute(k,v);
+    });
+    if(text!==undefined) n.textContent = text;
+    return n;
+  }
+
+  startBtn.addEventListener('click', ()=>{ level=0; renderLevel(); });
+  resetBtn.addEventListener('click', ()=>{ level=0; state={}; renderLevel(); });
+
+  // Auto-start voor meer chaos
+  startBtn.click();
+})();
+</script>
+</body>
+</html>

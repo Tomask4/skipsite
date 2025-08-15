@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -131,6 +132,11 @@
 
 <script>
 (function(){
+
+function disableAllUI() {
+  ui.querySelectorAll('button, input').forEach(el => el.disabled = true);
+}
+
   const task = document.getElementById('task');
   const ui = document.getElementById('ui');
   const startBtn = document.getElementById('start');
@@ -186,7 +192,7 @@
         let n=0; const skip = el('button',{class:'btn danger'},'Skip (0/10)');
         skip.addEventListener('click',()=>{
           n++; skip.textContent = 'Skip ('+n+'/10)';
-          if(n>=10){ complete('Oké dan. Je doorzettingsvermogen is verdacht.');
+          if(n>=10){ complete('Oké dan. Je doorzettingsvermogen is verdacht.'); skip.disabled = true;
             const go = el('button',{class:'primary'},'Volgende level');
             go.addEventListener('click',next); ui.appendChild(go);
           }
@@ -261,7 +267,7 @@
     // 7
     {
       title:'Level 7 – Vang de vluchtende Skip',
-      desc:'Klik op de Skip-knop die weg rent. Je hebt 10 seconden.',
+      desc:'Klik op de Skip-knop die weg rent.',
       run(){
         ui.innerHTML='';
         const box = el('div',{style:'position:relative;height:220px;border:1px dashed rgba(255,255,255,.18);border-radius:12px;overflow:hidden'});
@@ -276,10 +282,10 @@
         box.addEventListener('mousemove',e=>{
           const rect = b.getBoundingClientRect();
           const d = Math.hypot(e.clientX-rect.left, e.clientY-rect.top);
-          if(d<120) move();
+          if(d<80) move();
         });
-        b.addEventListener('click',()=>{ clearInterval(iv); complete('Je hebt de skip gevangen. Ironisch.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt); });
-        box.appendChild(b); ui.append(time, box);
+        b.addEventListener('click',()=>{ complete('Je hebt de skip gevangen. Ironisch.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt); });
+        box.appendChild(b); ui.append(box);
       }
     },
     // 8
@@ -353,17 +359,39 @@
     },
     // 12
     {
-      title:'Level 12 – Focus houden',
-      desc:'Houd de cursor 3 seconden boven de knop zonder te bewegen.',
-      run(){
-        ui.innerHTML='';
-        const b = el('button',{class:'btn'},'Blijf boven mij');
-        let t=0, iv=null;
-        b.addEventListener('mouseenter',()=>{ iv=setInterval(()=>{ t+=100; if(t>=3000){ clearInterval(iv); complete('Zenmeester.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt); } },100); });
-        b.addEventListener('mouseleave',()=>{ clearInterval(iv); t=0; });
-        ui.append(b);
-      }
-    },
+  title: 'Level 12 – Focus houden',
+  desc: 'Houd de cursor 3 seconden boven de knop zonder te bewegen.',
+  run() {
+    ui.innerHTML = '';
+    let hoverActive = true; // toegevoegd
+    const b = el('button', {class:'btn'}, 'Blijf boven mij');
+    let t = 0, iv = null;
+
+    b.addEventListener('mouseenter', () => {
+      if(!hoverActive) return; // toegevoegd
+      iv = setInterval(() => {
+        t += 100;
+        if(t >= 3000) {
+          hoverActive = false; // toegevoegd
+          clearInterval(iv);
+          b.disabled = true;
+          complete('Zenmeester.');
+          const nxt = el('button', {class:'primary'}, 'Verder »');
+          nxt.addEventListener('click', next);
+          ui.appendChild(nxt);
+        }
+      }, 100);
+    });
+
+    b.addEventListener('mouseleave', () => {
+      clearInterval(iv);
+      t = 0;
+    });
+
+    ui.append(b);
+  }
+},
+
     // 13
     {
       title:'Level 13 – Niet klikken',
@@ -386,7 +414,7 @@
         const grid = el('div',{style:'display:grid;grid-template-columns:repeat(5,1fr);gap:8px'});
         const real = R.int(0,19);
         for(let i=0;i<20;i++){
-          const b = el('button',{class:'btn'}, i===real? 'ECHTE SKIP':'Skip');
+          const b = el('button',{class:'btn'}, i===real? 'Skip':'Skip');
           b.addEventListener('click',()=>{ if(i===real){ complete('Je vond hem. Verdacht…'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} else { b.disabled=true; shake(b);} });
           grid.appendChild(b);
         }
@@ -402,9 +430,19 @@
         let t=2.00, iv=null; const label = el('div',{class:'big'},t.toFixed(2)+'s');
         const start = el('button',{class:'btn'},'Start');
         const stop = el('button',{class:'btn',disabled:true},'Stop!');
-        start.addEventListener('click',()=>{ if(iv) return; start.disabled=true; stop.disabled=false; iv=setInterval(()=>{ t=Math.max(0, t-0.01); label.textContent=t.toFixed(2)+'s'; if(t<=0){ clearInterval(iv); }
-        },20); });
-        stop.addEventListener('click',()=>{ if(!iv) return; clearInterval(iv); const diff=Math.abs(t-0); if(diff<=0.05){ complete('Perfecte timing.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} else { label.textContent='Mislukt ('+t.toFixed(2)+'s)'; start.disabled=false; stop.disabled=true; t=2.00; } });
+        start.addEventListener('click',()=>{
+  if(iv) return;
+  start.disabled=true;
+  stop.disabled=false;
+  iv=setInterval(()=>{
+    t -= 0.01;
+    if(t <= 0){
+      t = 2.00; // herstart timer
+    }
+    label.textContent = t.toFixed(2)+'s';
+  },20);
+});
+        stop.addEventListener('click',()=>{ if(!iv) return; clearInterval(iv); const diff=Math.abs(t-0); if(diff<=0.05){ complete('Perfecte timing.'); stop.disabled=true; start.disabled=true; const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} else { label.textContent='Mislukt ('+t.toFixed(2)+'s)'; start.disabled=false; stop.disabled=true; iv=null; t=2.00; } });
         ui.append(label,start,stop);
       }
     },
@@ -416,8 +454,9 @@
         ui.innerHTML='';
         const letters = ['S','K','I','P'];
         let idx=0; const row = el('div',{style:'display:flex;gap:8px;flex-wrap:wrap'});
-        for(let i=0;i<8;i++){
-          const ch = R.pick(['S','K','I','P','X','Z']);
+        let forced=['S','K','I','P'];
+        for(let i=0;i<8;i++){ let ch = forced.length>0 ? forced.shift() : R.pick(['S','K','I','P','X','Z']);
+          // ch is al bepaald hierboven
           const b = el('button',{class:'btn'}, ch);
           b.addEventListener('click',()=>{ if(ch===letters[idx]){ idx++; b.disabled=true; if(idx===4){ complete('S K I P compleet.'); const nxt = el('button',{class:'primary'},'Verder »'); nxt.addEventListener('click',next); ui.appendChild(nxt);} } else { idx=0; Array.from(row.children).forEach(c=>c.disabled=false); shake(b);} });
           row.appendChild(b);
@@ -487,11 +526,14 @@
         a.addEventListener('click',()=>{ a.disabled=true; got(); });
         lock.addEventListener('dragover',e=>e.preventDefault());
         gear.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain','g'));
-        lock.addEventListener('drop',e=>{ e.preventDefault(); if(e.dataTransfer.getData('text/plain')==='g'){ lock.textContent='🔓'; got(); }});
+        lock.addEventListener('drop',e=>{ e.preventDefault(); if(e.dataTransfer.getData('text/plain')==='g'){ gear.setAttribute('draggable', false);
+lock.ondrop = null;
+lock.ondragover = null;
+ lock.textContent='🔓'; got(); }});
         b.addEventListener('input',()=>{ if(b.value.trim().toUpperCase()==='SKIPBOSS'){ b.disabled=true; got(); }});
         function got(){ tokens++; status.textContent='Tokens: '+tokens+'/3'; if(tokens>=3){
           const gate = el('button',{class:'btn danger'},'EINDELIJK SKIP ▶');
-          gate.addEventListener('click',()=>{ gate.textContent='Haha, nog steeds niet. Maar je hebt WEL gewonnen 🎉'; complete('GG! Klik Reset om opnieuw te lijden.'); });
+          gate.addEventListener('click',()=>{ gate.textContent='Je hebt gewonnen! 🎉'; gate.disabled=true; complete('GG! Klik Reset om opnieuw te lijden.'); });
           ui.appendChild(gate);
         }}
         ui.append(status,a,b,cWrap);
@@ -518,9 +560,22 @@
 
   function next(){ level = Math.min(level+1, levels.length-1); renderLevel(); }
   function endFail(){ ui.appendChild(el('div',{class:'status'},'Mislukt! Probeer opnieuw.')); }
-  function complete(msg){ ui.appendChild(el('div',{class:'status'}, '✅ '+msg)); }
+  function complete(msg){
+    disableAllUI();
+    // Disable all draggables
+    ui.querySelectorAll('[draggable=true]').forEach(el=>{
+      el.setAttribute('draggable', false);
+      el.ondragstart = null;
+    });
+    // Disable common drop targets in this app (e.g., .pig, locks)
+    ui.querySelectorAll('.pig').forEach(el=>{
+      el.ondrop = null;
+      el.ondragover = null;
+    });
+    ui.appendChild(el('div',{class:'status'}, '✅ '+msg));
+  }
 
-  function shake(node){
+    function shake(node){
     node.style.transition='transform .1s';
     node.style.transform='translateX(4px)';
     setTimeout(()=>{ node.style.transform='translateX(-4px)'; },60);
@@ -531,13 +586,17 @@
   function el(tag, attrs={}, text){
     const n = document.createElement(tag);
     Object.entries(attrs).forEach(([k,v])=>{
-      if(k==='class') n.className=v; else if(k==='style') n.setAttribute('style',v); else if(k in n) n[k]=v; else n.setAttribute(k,v);
+      if(k==='class') n.className=v;
+      else if(k==='style') n.setAttribute('style',v);
+      else if(k in n) n[k]=v;
+      else n.setAttribute(k,v);
     });
     if(text!==undefined) n.textContent = text;
     return n;
   }
 
-  startBtn.addEventListener('click', ()=>{ level=0; renderLevel(); });
+  
+  startBtn.addEventListener('click', ()=>{ startBtn.style.display='none'; level=0; renderLevel(); });
   resetBtn.addEventListener('click', ()=>{ level=0; state={}; renderLevel(); });
 
   // Auto-start voor meer chaos
